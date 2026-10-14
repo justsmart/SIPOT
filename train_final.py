@@ -16,7 +16,7 @@ from torch import nn
 from torch.optim import Adam, SGD
 from torch.optim.lr_scheduler import StepLR, CosineAnnealingWarmRestarts, CosineAnnealingLR
 
-    
+
 
 def view_mixup(data_list,label,v_mask,l_mask):
     new_data = []
@@ -27,18 +27,18 @@ def view_mixup(data_list,label,v_mask,l_mask):
         new_data.append(torch.index_select(view_data, 0, indices))
         new_labels[i] = torch.index_select(new_labels[i],0,indices)
         v_mask[:,i] = torch.index_select(v_mask[:,i],0,indices)
-        
+
     label = new_labels.sum(dim=0)
     label = torch.masked_fill(label,label>0,1)
     l_mask = torch.masked_fill(l_mask,label>0,1)
     return new_data,label,v_mask,l_mask
 
 def train(loader, model, loss_model, opt, sche, epoch,dep_graph,last_preds,logger):
-    
+
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
-    
+
     mce= nn.MultiLabelSoftMarginLoss()
     model.train()
     end = time.time()
@@ -56,17 +56,17 @@ def train(loader, model, loss_model, opt, sche, epoch,dep_graph,last_preds,logge
             last_p = last_preds[i*args.batch_size:i*args.batch_size+label.shape[0]].detach()
         z_sample, uniview_mu_list, uniview_sca_list, fusion_z_mu, fusion_z_sca, xr_list_cross, label_emb_sample, pred, label_emb,label_emb_var,new_p = model(data,mask=inc_V_ind )
         All_preds = torch.cat([All_preds,new_p],dim=0)
-        
-        
-        
-        
 
-        
-        
 
-        
-        
-        
+
+
+
+
+
+
+
+
+
 
         loss_CL = loss_model.weighted_BCE_loss(pred,label,inc_L_ind) + loss_model.weighted_BCE_loss(new_p,label,inc_L_ind)
         contrast_loss = loss_model.contrast_loss(z_sample, label_emb_sample, label, inc_L_ind)
@@ -78,7 +78,7 @@ def train(loader, model, loss_model, opt, sche, epoch,dep_graph,last_preds,logge
         loss.backward()
         if isinstance(sche,CosineAnnealingWarmRestarts):
             sche.step(epoch + i / len(loader))
-        
+
         opt.step()
         losses.update(loss.item())
         batch_time.update(time.time()- end)
@@ -102,15 +102,15 @@ def test(loader, model, loss_model, epoch,logger):
     end = time.time()
     for i, (data, label, inc_V_ind, inc_L_ind) in enumerate(loader):
         data=[v_data.to('cuda:0') for v_data in data]
-        
+
         z_sample, uniview_mu_list, uniview_sca_list, fusion_z_mu, fusion_z_sca, xr_list, label_embedding_sample, pred, label_emb,label_emb_var, new_p = model(data,mask=inc_V_ind.to('cuda:0'))
 
         pred = pred.cpu()
         total_labels = np.concatenate((total_labels,label.numpy()),axis=0) if len(total_labels)>0 else label.numpy()
         total_preds = np.concatenate((total_preds,pred.detach().numpy()),axis=0) if len(total_preds)>0 else pred.detach().numpy()
-        
+
         loss = loss_model.weighted_BCE_loss(pred,label,inc_L_ind)
-        
+
         losses.update(loss.item())
         batch_time.update(time.time()- end)
         end = time.time()
@@ -127,7 +127,7 @@ def test(loader, model, loss_model, epoch,logger):
                   'AUC {auc:.3f}\t'.format(
                         epoch,   batch_time=batch_time,
                         losses = losses,
-                        ap=evaluation_results[0], 
+                        ap=evaluation_results[0],
                         hl=evaluation_results[1],
                         rl=evaluation_results[2],
                         auc=evaluation_results[3]
@@ -138,9 +138,9 @@ def main(args,file_path):
     data_path = osp.join(args.root_dir, args.dataset, args.dataset+'_six_view.mat')
     fold_data_path = osp.join(args.root_dir, args.dataset, args.dataset+'_six_view_MaskRatios_' + str(
                                 args.mask_view_ratio) + '_LabelMaskRatio_' +
-                                str(args.mask_label_ratio) + '_TraindataRatio_' + 
+                                str(args.mask_label_ratio) + '_TraindataRatio_' +
                                 str(args.training_sample_ratio) + '.mat')
-    
+
     folds_num = args.folds_num
     folds_results = [AverageMeter() for i in range(9)]
     logger = utils.setLogger(None)
@@ -151,7 +151,7 @@ def main(args,file_path):
         test_dataloder,test_dataset = MLdataset.getIncDataloader(data_path, fold_data_path,training_ratio=args.training_sample_ratio,val_ratio=0.15,fold_idx=fold_idx,mode='test',batch_size=args.batch_size,num_workers=4)
         val_dataloder,val_dataset = MLdataset.getIncDataloader(data_path, fold_data_path,training_ratio=args.training_sample_ratio,fold_idx=fold_idx,mode='val',batch_size=args.batch_size,num_workers=4)
         d_list = train_dataset.d_list
-        classes_num = train_dataset.classes_num     
+        classes_num = train_dataset.classes_num
         labels = torch.tensor(train_dataset.cur_labels).float().to('cuda:0')
         dep_graph = None
         pri_c = train_dataset.cur_labels.sum(axis=0)/train_dataset.cur_labels.shape[0]
@@ -160,7 +160,7 @@ def main(args,file_path):
         loss_model = Loss(args.gamma,args.lamda)
         optimizer = Adam(model.parameters(), lr=args.lr)
         scheduler = None
-        
+
 
         logger.info('train_data_num:'+str(len(train_dataset))+'  test_data_num:'+str(len(test_dataset))+'   fold_idx:'+str(fold_idx))
         print(args)
@@ -174,10 +174,10 @@ def main(args,file_path):
             if epoch==0:
                 All_preds = None
             train_losses,model,All_preds,label_emb_sample = train(train_dataloder,model,loss_model,optimizer,scheduler,epoch,dep_graph,All_preds,logger)
-            
+
             if epoch>=args.pre_epochs:
                 val_results = test(val_dataloder,model,loss_model,epoch,logger)
-                
+
                 if val_results[0]*0.25+val_results[2]*0.25+val_results[3]*0.25>=static_res:
                     static_res = val_results[0]*0.25+val_results[2]*0.25+val_results[3]*0.25
                     best_model_dict['model'] = copy.deepcopy(model.state_dict())
@@ -203,7 +203,7 @@ def main(args,file_path):
     file_handle.write(res_str)
     file_handle.write('\n')
     file_handle.close()
-        
+
 
 def filterparam(file_path,index):
     params = []
@@ -216,12 +216,12 @@ def filterparam(file_path,index):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    working_dir = osp.dirname(osp.abspath(__file__)) 
-    parser.add_argument('--records-dir', type=str, metavar='PATH', 
+    working_dir = osp.dirname(osp.abspath(__file__))
+    parser.add_argument('--records-dir', type=str, metavar='PATH',
                         default=osp.join(working_dir, 'final_records'))
-    parser.add_argument('--file-path', type=str, metavar='PATH', 
+    parser.add_argument('--file-path', type=str, metavar='PATH',
                         default='')
-    parser.add_argument('--root-dir', type=str, metavar='PATH', 
+    parser.add_argument('--root-dir', type=str, metavar='PATH',
                         default='./data/')
     parser.add_argument('--dataset', type=str, default='')#mirflickr corel5k pascal07 iaprtc12 espgame
     parser.add_argument('--datasets', type=list, default=['corel5k'])
@@ -231,12 +231,12 @@ if __name__ == '__main__':
     parser.add_argument('--folds-num', default=10, type=int)
     parser.add_argument('--seed', default=1, type=int)
     parser.add_argument('--workers', default=8, type=int)
-    
+
     parser.add_argument('--name', type=str, default='final_Cross_')
     parser.add_argument('--lr', type=float, default=1)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=1e-4)
-    parser.add_argument('--epochs', type=int, default=150) #150 for corel5k; 100 for iaprtc12,espgame; 20 for pascal07,mirflickr  
+    parser.add_argument('--epochs', type=int, default=150) #150 for corel5k; 100 for iaprtc12,espgame; 20 for pascal07,mirflickr
     parser.add_argument('--pre_epochs', type=int, default=0)
     parser.add_argument('--z_dim', type=int, default=512)
     parser.add_argument('--batch_size', type=int, default=128)
@@ -245,12 +245,12 @@ if __name__ == '__main__':
     parser.add_argument('--gamma', type=float, default=1e-1)
     parser.add_argument('--sigma', type=float, default=0.)
     parser.add_argument('--lamda', type=float, default=0.)
-    
+
     args = parser.parse_args()
-    
+
     os.makedirs(args.records_dir, exist_ok=True)
     lr_list = [1e-3]
-    alpha_list = [1e0]# 
+    alpha_list = [1e0]#
     beta_list = [1e-3]# 1e-3 for corel5k 1e-2 for others; for no missing, 1e-1 for PAS and MIR dataset, 1e-2 for COR and ESP, 1e0 for IAP
     gamma_list = [0.5]# 0.5 for all except for MIR with 'no missing' (0 is recommand)
     sigma_list = [1e0]# 1 for all except for IAP/COR with 'no missing' (0.1 is recommand)
@@ -273,7 +273,7 @@ if __name__ == '__main__':
                                 args.dataset = dataset
                                 file_path = osp.join(args.records_dir,args.name+args.dataset+'_VM_' + str(
                                                 args.mask_view_ratio) + '_LM_' +
-                                                str(args.mask_label_ratio) + '_T_' + 
+                                                str(args.mask_label_ratio) + '_T_' +
                                                 str(args.training_sample_ratio) + '.txt')
                                 args.file_path = file_path
                                 existed_params = filterparam(file_path,[-5,-4,-3,-2,-1])

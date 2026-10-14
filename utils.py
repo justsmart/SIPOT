@@ -28,16 +28,16 @@ class AverageMeter(object):
 
 def setLogger(logfile):
     logger = logging.getLogger()
-    
+
     logger.setLevel(level=logging.INFO)
     formatter = logging.Formatter('%(message)s')
     console = logging.StreamHandler()
-    
-    
+
+
     while logger.handlers:
         logger.handlers.pop()
     if logfile:
-        handler = logging.FileHandler(logfile,mode='w') 
+        handler = logging.FileHandler(logfile,mode='w')
         logger.addHandler(handler)
     logger.addHandler(console)
     return logger

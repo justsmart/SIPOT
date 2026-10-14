@@ -22,7 +22,7 @@ class MLP(nn.Module):
         # init layers
         self.mlps =[]
         layers = []
-        
+
         if len(hidden_dim)>0:
             layers.append(nn.Linear(in_dim, hidden_dim[0]))
             # layers.append(nn.Dropout(dropout_rate))
@@ -75,7 +75,7 @@ class sharedQz_inference_mlp(nn.Module):
         z_sca = self.z_sca(hidden_features)
         # class_feature  = self.z
         return z_mu, z_sca
-    
+
 class inference_mlp(nn.Module):
     def __init__(self, in_dim, out_dim,hidden_dim=[1024]):
         super(inference_mlp, self).__init__()
@@ -88,7 +88,7 @@ class inference_mlp(nn.Module):
         hidden_features = self.mlp(x)
         # class_feature  = self.z
         return hidden_features
-    
+
 class Px_generation_mlp(nn.Module):
     def __init__(self, in_dim, out_dim, hidden_dim=[512]):
         super(Px_generation_mlp, self).__init__()
@@ -100,7 +100,7 @@ class Px_generation_mlp(nn.Module):
     def forward(self, z):
         xr = self.mlp(z)
         return xr
-    
+
 class VAE(nn.Module):
     def __init__(self, d_list,z_dim,class_num):
         super(VAE, self).__init__()
@@ -108,11 +108,11 @@ class VAE(nn.Module):
         self.k = class_num
         self.z_dim = z_dim
         self.num_views = len(d_list)
-        
+
 
         # self.switch_layers = switch_layers(z_dim,self.num_views)
 
-        
+
         self.z_inference = []
         for v in range(self.num_views):
             self.z_inference.append(inference_mlp(self.x_dim_list[v], self.z_dim))
@@ -150,7 +150,7 @@ class VAE(nn.Module):
 
         # mu = torch.stack(z_mu)
         # sca = torch.stack(z_sca)
-        
+
         ###POE aggregation
         # fusion_mu, fusion_sca = self.poe_aggregate(mu, sca, mask)
 
@@ -163,32 +163,32 @@ class VAE(nn.Module):
         # z = z / (mask.sum(1).unsqueeze(-1)+1e-8)
 
         return uniview_mu_list, uniview_sca_list
-    
+
     def generation_x(self, z):
-        
+
         xr_dist = []
         for v in range(self.num_views):
             xrs_loc = self.px_generation[v](z)
             xr_dist.append(xrs_loc)
         return xr_dist
-    
+
     def generation_x_cross(self,zs):
         #zs [v,n,d]
-        
+
         cross_recons = []
         for v in range(self.num_views):
             x_hat_v = self.px_generation[v](zs)    # [V,B,D_v]
             cross_recons.append(x_hat_v)
         return cross_recons
-    
+
     def generation_x_p(self, z):
-        
+
         xr_dist = []
         for v in range(self.num_views):
             xrs_loc = self.px_generation2[v](z)
             xr_dist.append(xrs_loc)
         return xr_dist
-    
+
     def poe_aggregate(self, mu, var, mask=None, eps=1e-5):
         if mask is None:
             mask_matrix = torch.ones_like(mu).to(mu.device)
@@ -215,7 +215,7 @@ class VAE(nn.Module):
         if torch.sum(torch.isnan(aggregate_mu)).item()>0:
             print(',')
         return aggregate_mu, aggregate_var
-    
+
     def moe_aggregate(self, mu, var, mask=None, eps=1e-5):
         if mask is None:
             mask_matrix = torch.ones_like(mu).to(mu.device)
@@ -226,7 +226,7 @@ class VAE(nn.Module):
         aggregate_var = exist_var.sum(dim=0)
         aggregate_mu = exist_mu.sum(dim=0)
         return aggregate_mu,aggregate_var
-    
+
     def forward(self, x_list, mask=None):
         uniview_mu_list, uniview_sca_list = self.inference_z(x_list)
         z_mu = torch.stack(uniview_mu_list,dim=0) # [v n d]
@@ -234,12 +234,12 @@ class VAE(nn.Module):
         if torch.sum(torch.isnan(z_mu)).item() > 0:
             print("z:nan")
             pass
-        
+
         # if self.training:
         #     z_mu = fill_with_label(label_embedding_mu,label,z_mu,mask)
         #     z_sca = fill_with_label(label_embedding_var,label,z_sca,mask)
         fusion_mu, fusion_sca = self.poe_aggregate(z_mu, z_sca, mask)
-        
+
 
         if torch.sum(torch.isnan(fusion_mu)).item() > 0:
             pass

@@ -19,14 +19,14 @@ def gaussian_log_var(x, mu, var, eps=1e-14):
     return -0.5 * (torch.log(torch.tensor(2.0 * np.pi)) + torch.log(var) + torch.pow(x - mu, 2) / var)
 
 def kl_div_var(q_mu, q_var, p_mu, p_var, eps=1e-12):
-    
+
     return 0.5 * (torch.log((p_var+eps) / (q_var+eps)) + (q_var+eps) / (p_var+eps) + torch.pow(q_mu - p_mu, 2) / (p_var+eps) - 1)
 
 def cosdis(x1,x2):
     return (1-torch.cosine_similarity(x1,x2,dim=-1))/2
 
 def vade_trick(mc_sample, gmm_pi, gmm_mu, gmm_sca):
-    
+
         log_pz_c = torch.mean(gaussian_log_var(mc_sample.unsqueeze(1), gmm_mu.unsqueeze(0), gmm_sca.unsqueeze(0)), dim=-1)
 
         log_pc = torch.log(gmm_pi.unsqueeze(0))
@@ -40,17 +40,17 @@ class Loss(nn.Module):
         super(Loss, self).__init__()
         self.gamma = gamma
         self.lamda = lamda
-    def compact_loss(self,u_list,var_list,mask): 
+    def compact_loss(self,u_list,var_list,mask):
         loss = 0
         view_num = len(u_list)
         for i in range(0,len(u_list)):
             for j in range(i+1,len(u_list)):
-                
+
                 # kl =  kl_div_var(u_list[i].detach(),var_list[i].detach(),u_list[j],var_list[j])
                 # assert torch.sum(torch.isinf(kl)).item() == 0
                 # kl_loss = kl * var_list[j]
                 # kl_loss = kl * (mask[:,i]*mask[:,j]).unsqueeze(-1)
-                
+
                 kl = (u_list[i].detach()-u_list[j])**2
                 kl = kl*var_list[j]
                 kl_loss = kl*(mask[:,i]*mask[:,j]).unsqueeze(-1)
@@ -63,28 +63,28 @@ class Loss(nn.Module):
 
         return loss
     def vae_loss_new(self,z_mu,z_sca, qc_x,  c_mu,c_sca,p_c,inc_L_ind):
-        
+
         z_sam = gaussian_reparameterization_var(z_mu,z_sca)
         c_sam = gaussian_reparameterization_var(c_mu,c_sca)
         logsoft_qz_x = (z_sam.softmax(-1)+1e-5).log().detach()
         soft_qz_c = c_sam.softmax(-1)+1e-5
         # assert torch.sum(torch.isnan(kl_xc)).item() == 0
-    
+
 
         kl_xc = torch.abs(F.kl_div(logsoft_qz_x.unsqueeze(1),soft_qz_c.unsqueeze(0),reduction='none'))
         if torch.sum(torch.isnan(kl_xc)).item() > 0:
             print('error')
         assert torch.sum(torch.isnan(kl_xc)).item() == 0
-        
+
         z_kl_loss = torch.mean((qc_x.unsqueeze(-1) * kl_xc).sum((1,2)))
 
 
         # print((qc_x<0).sum())
         assert torch.sum(torch.isnan(z_kl_loss)).item() == 0
-        if len(p_c.shape)==1: 
+        if len(p_c.shape)==1:
             p_c = p_c.unsqueeze(0)
         c_kl_loss = torch.mean((qc_x * torch.log((qc_x / (p_c+1e-5)+1e-5))).abs())
-        
+
         assert torch.sum(torch.isnan(c_kl_loss)).item() == 0
         # # print((c_kl_loss<0).sum())
         # c_kl_loss_mean = torch.mean(c_kl_loss)
@@ -96,7 +96,7 @@ class Loss(nn.Module):
         return loss.mean()
     def z_c_loss_new(self,z_mu, label,  c_mu,inc_L_ind):
         label_inc = label.mul(inc_L_ind)
-        
+
         sample_label_emb = (label_inc.matmul(c_mu))/(label_inc.sum(-1)+1e-9).unsqueeze(-1)
         loss = ((z_mu-sample_label_emb)**2)
         # print(loss.mean())
@@ -111,7 +111,7 @@ class Loss(nn.Module):
         loss = torch.abs(z_mu.unsqueeze(1)-c_mu.unsqueeze(0)).sum(-1)
         loss = (loss*(label*inc_L_ind)).sum(-1)/((label*inc_L_ind).sum(-1)+1e-9)
         return loss.sum()/z_mu.shape[0]
-    
+
     def vae_loss(self,z_mu,z_sca, qc_x,  c_mu,c_sca,p_c,inc_L_ind):
         kl_xc = kl_div_var(z_mu.unsqueeze(1), z_sca.unsqueeze(1), c_mu.unsqueeze(0), c_sca.unsqueeze(0))
         # z_kl_loss = torch.mean(qc_x * torch.mean(kl, dim=-1),
@@ -128,16 +128,16 @@ class Loss(nn.Module):
         if torch.sum(torch.isnan(kl_xc)).item() > 0:
             print('error')
         assert torch.sum(torch.isnan(kl_xc)).item() == 0
-        
+
         z_kl_loss = torch.mean((qc_x.unsqueeze(-1) * kl_xc).sum((1,2)))
 
 
         # print((qc_x<0).sum())
         assert torch.sum(torch.isnan(z_kl_loss)).item() == 0
-        if len(p_c.shape)==1: 
+        if len(p_c.shape)==1:
             p_c = p_c.unsqueeze(0)
         c_kl_loss = torch.mean((qc_x * torch.log((qc_x / (p_c+1e-5)+1e-5))).abs())
-        
+
         assert torch.sum(torch.isnan(c_kl_loss)).item() == 0
         # # print((c_kl_loss<0).sum())
         # c_kl_loss_mean = torch.mean(c_kl_loss)
@@ -207,7 +207,7 @@ class Loss(nn.Module):
             return torch.sum(res)
         elif reduction=='none':
             return res
-            
+
     def weighted_wmse_loss(self,input, target, weight, reduction='mean'):
         ret = (torch.diag(weight).mm(target - input)) ** 2
         if torch.sum(torch.isnan(ret)).item()>0:
@@ -230,7 +230,7 @@ class Loss(nn.Module):
                         torch.pow(data[i].detach() - rec_v[i][:, j, :], 2) * mask_v[:, i:i + 1] * mask_v[:, j:j + 1])
         return  mse1 + self.lamda * mse2 / n_view
     def contrast_loss(self, fea_emb, prot_emb, label,inc_L_ind):
-        pos_label = label.mul(inc_L_ind) 
+        pos_label = label.mul(inc_L_ind)
         v1 = fea_emb
         v2 = prot_emb
         n = v1.size(0)
@@ -259,8 +259,3 @@ class Loss(nn.Module):
         # print(res.max(),res.min())
         assert torch.sum(torch.isnan(res)).item() == 0
         return res
-
-
-
-    
-    

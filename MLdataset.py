@@ -52,7 +52,7 @@ def loadMvMlDataFromMat(mat_path):
     return [v_data[rand_index] for v_data in mv_data],labels[rand_index],total_sample_num
 
 def loadMfDIMvMlDataFromMat(mat_path, fold_mat_path,fold_idx=0):
-    # load multiple folds double incomplete multi-view multi-label data and labels 
+    # load multiple folds double incomplete multi-view multi-label data and labels
     # mark sure the out dimension is n x d, where n is the number of samples
     data = scipy.io.loadmat(mat_path)
     datafold = scipy.io.loadmat(fold_mat_path)
@@ -71,7 +71,7 @@ def loadMfDIMvMlDataFromMat(mat_path, fold_mat_path,fold_idx=0):
     if total_sample_num!=labels.shape[0]:
         labels = labels.T
     assert mv_data[0].shape[0]==labels.shape[0]==total_sample_num
-    
+
 
 
     folds_data = datafold['folds_data']
@@ -87,20 +87,20 @@ def loadMfDIMvMlDataFromMat(mat_path, fold_mat_path,fold_idx=0):
     assert inc_view_indicator.shape[0]==inc_label_indicator.shape[0]==sample_index.shape[0]==labels.shape[0]
     # incomplete data construction and normalization fill with 0 value
     inc_mv_data = [(StandardScaler().fit_transform(v_data.astype(np.float32))*inc_view_indicator[:,v:v+1]) for v,v_data in enumerate(mv_data)]
-    ###### or fill it with random noise 
+    ###### or fill it with random noise
     # nor_mv_data = [(StandardScaler(),fit_transform(v_data.astype(np.float32))) for v,v_data in enumerate(mv_data)]
     # inc_mv_data = [np.random.randn(v_data,shape[0], v_data.shape[1]) for v_data in nor_mv_data]
     # for v, v_ data in enumerate(nor_mv_data):
     #     inc_mv_data[v][inc_view_indicator[:, v] == 1, :] = v_data[inc_view_indicator[:, v] == 1,:].copy()
-    
+
     # incomplete label construction
     inc_labels = labels*inc_label_indicator
-    # delete data with all zero label 
+    # delete data with all zero label
     ind00 = labels.sum(axis=1)==0
     # inc_mv_data = [np.delete(v_data, ind00,axis=0) for v_data in inc_mv_data]
     # mv_data = [np.delete(v_data, ind00,axis=0) for v_data in mv_data]
-    # labels = np.delete(labels,ind00,axis=0)   
-    # inc_labels = np.delete(inc_labels,ind00,axis=0)   
+    # labels = np.delete(labels,ind00,axis=0)
+    # inc_labels = np.delete(inc_labels,ind00,axis=0)
     # inc_view_indicator = np.delete(inc_view_indicator,ind00,axis=0)
     # inc_label_indicator = np.delete(inc_label_indicator,ind00,axis=0)
     # total_sample_num = labels.shape[0]
@@ -113,10 +113,10 @@ def loadMfDIMvMlDataFromMat(mat_path, fold_mat_path,fold_idx=0):
     # print('inc_labels',inc_labels[0,0:6])
     # print('inc_label==label?',np.array_equal(inc_labels,labels))
     # print('inc_mv_data==mv_data?',[np.array_equal(v_data,inc_mv_data[v]) for v,v_data in enumerate(mv_data)])
-    # for 
+    # for
 
     return inc_mv_data,inc_labels,labels,inc_view_indicator,inc_label_indicator,total_sample_num
-    
+
 class ComDataset(Dataset):
     def __init__(self,mat_path,training_ratio=0.7,val_ratio=0.15,mode='train',semisup=False):
         self.mv_data, self.labels, self.total_sample_num= loadMvMlDataFromMat(mat_path)
@@ -138,14 +138,14 @@ class ComDataset(Dataset):
         self.d_list = [da.shape[1] for da in self.mv_data]
     def __len__(self):
         if self.mode == 'train':
-            return self.train_sample_num 
+            return self.train_sample_num
         elif self.mode == 'val':
-            return self.val_sample_num 
-        else: return self.test_sample_num 
-    
+            return self.val_sample_num
+        else: return self.test_sample_num
+
     def __getitem__(self, index):
         # index = index if self.is_train else self.train_sample_num+index
-        data = [torch.tensor(v[index],dtype=torch.float) for v in self.cur_mv_data] 
+        data = [torch.tensor(v[index],dtype=torch.float) for v in self.cur_mv_data]
         label = torch.tensor(self.cur_labels[index], dtype=torch.float)
         return data,label, data, label
 
@@ -178,14 +178,14 @@ class IncDataset(Dataset):
 
     def __len__(self):
         if self.mode == 'train':
-            return self.train_sample_num 
+            return self.train_sample_num
         elif self.mode == 'val':
-            return self.val_sample_num 
-        else: return self.test_sample_num 
-    
+            return self.val_sample_num
+        else: return self.test_sample_num
+
     def __getitem__(self, index):
         # index = index if self.is_train else self.train_sample_num+index
-        data = [torch.tensor(v[index],dtype=torch.float) for v in self.cur_mv_data] 
+        data = [torch.tensor(v[index],dtype=torch.float) for v in self.cur_mv_data]
         label = torch.tensor(self.cur_labels[index], dtype=torch.float)
         inc_V_ind = torch.tensor(self.cur_inc_V_ind[index], dtype=torch.int32)
         inc_L_ind = torch.tensor(self.cur_inc_L_ind[index], dtype=torch.int32)
@@ -195,7 +195,7 @@ def getComDataloader(matdata_path,training_ratio=0.7,val_ratio=0.15,mode='train'
     dataset = ComDataset(matdata_path, training_ratio=training_ratio, val_ratio=val_ratio, mode=mode)
     dataloder = DataLoader(dataset=dataset,batch_size=batch_size,shuffle=shuffle,num_workers=num_workers)
     return dataloder,dataset
- 
+
 def getIncDataloader(matdata_path, fold_matdata_path, training_ratio=0.7, val_ratio=0.15, fold_idx=0, mode='train',batch_size=1,num_workers=1,shuffle=False):
     dataset = IncDataset(matdata_path, fold_matdata_path, training_ratio=training_ratio, val_ratio=val_ratio, mode=mode, fold_idx=fold_idx)
     dataloder = DataLoader(dataset=dataset,batch_size=batch_size,shuffle=shuffle,num_workers=num_workers)

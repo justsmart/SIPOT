@@ -1,8 +1,8 @@
 
-# this code is released by: 
-# L. Yang, X.-Z. Wu, Y. Jiang, and Z.-H. Zhou. 
-# Multi-label deep forest. 
-#In: Proceedings of the 24th European Conference on Artificial Intelligence (ECAI'20), 
+# this code is released by:
+# L. Yang, X.-Z. Wu, Y. Jiang, and Z.-H. Zhou.
+# Multi-label deep forest.
+#In: Proceedings of the 24th European Conference on Artificial Intelligence (ECAI'20),
 # Santiago de Compostela, Spain, 2020. [code]
 
 import numpy as np
@@ -28,7 +28,7 @@ def do_metric(y_prob, label):
     auc = compute_auc(y_prob, label)
     auc_me = mlc_auc(y_prob, label)
     return np.array([precision, 1 - hamming_loss, 1-ranking_loss, auc_me, 1 - one_error, 1 - coverage, auc, macro_f1, micro_f1])
-    
+
 def init_supervise(supervise):
     if supervise == "ranking loss":
         ranking_loss = 1.0
@@ -366,14 +366,14 @@ def compute_auc_vec(y_prob, label):
     return macro_auc
 
 def performance(y,f,T):
-#    code is written by Jerry, according to the original code from 
+#    code is written by Jerry, according to the original code from
 #    from http://mlda.swu.edu.cn/codes.php?name=iMVWL
-    n,K = f.shape    
+    n,K = f.shape
     match = np.zeros(n)
     fn = np.zeros(n)
     fp = np.zeros(n)
     for i in range(n):
-        si = f[i,:].argsort()[::-1]        
+        si = f[i,:].argsort()[::-1]
         words=y[i,:]
         correct_labels=np.where(words>-1)
         correct_labels = (np.array(correct_labels)).reshape(-1)
@@ -385,14 +385,14 @@ def performance(y,f,T):
         fn[i] = len(correct_labels)-match[i]
         fp[i] = T-match[i]
     return match,fp,fn
-  
+
 def mlr_roc(f, y_test):
-#    code is written by Jerry, according to the original code from 
+#    code is written by Jerry, according to the original code from
 #    from http://mlda.swu.edu.cn/codes.php?name=iMVWL
     K = y_test.shape[1]
     tpr1 = np.zeros(K)
     fpr1 = np.zeros(K)
-    
+
     for i in range(K):
         match,fpp,fnn = performance(y_test,f,i+1);
         tp1=match.sum()
@@ -401,15 +401,15 @@ def mlr_roc(f, y_test):
         tn1 = K*f.shape[0]-(tp1+fp1+fn1)
         tpr1[i] = tp1/(tp1+fn1)
         fpr1[i] = fp1/(fp1+tn1)
-    return tpr1,fpr1  
+    return tpr1,fpr1
 def mlc_auc(rocZ,newY):
-#    code is written by Jerry, according to the original code from 
-#    from http://mlda.swu.edu.cn/codes.php?name=iMVWL    
+#    code is written by Jerry, according to the original code from
+#    from http://mlda.swu.edu.cn/codes.php?name=iMVWL
 #    rocZ: problistic matrix  n*c
 #    newY: n*c matrix,elements in {-1,1}
     if newY.min()==0:
         newY = newY*2-1
-    
+
     tpr,fpr = mlr_roc(rocZ,newY)
     area = 0
     m = newY.shape[1]
